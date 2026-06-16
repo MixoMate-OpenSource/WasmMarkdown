@@ -1,0 +1,12 @@
+[package]
+name = "wasm-md-core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
+# pulldown-cmark features: "html" enables the html renderer module. We want default-features = false or true, but features = ["html"] is necessary to use push_html.

@@ -1,0 +1,15 @@
+# Rust build artifacts
+wasm-md-core/target/
+wasm-md-core/pkg/
+
+# Node / Next.js build artifacts
+node_modules/
+wasm-md-web/node_modules/
+wasm-md-web/.next/
+wasm-md-web/out/
+wasm-md-web/build/
+wasm-md-web/dist/
+
+# OS specific files
+.DS_Store
+Thumbs.db

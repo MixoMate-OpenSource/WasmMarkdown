@@ -1,0 +1,90 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            wasm-md-core/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack &> /dev/null; then
+            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          fi
+
+      - name: Build WebAssembly Core
+        run: |
+          cd wasm-md-core
+          wasm-pack build --target web --release
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: wasm-md-web/package-lock.json
+
+      - name: Integrate WASM and Install Node dependencies
+        run: |
+          mkdir -p wasm-md-web/src/wasm wasm-md-web/public/wasm
+          cp wasm-md-core/pkg/wasm_md_core.js wasm-md-web/src/wasm/
+          cp wasm-md-core/pkg/wasm_md_core.d.ts wasm-md-web/src/wasm/
+          cp wasm-md-core/pkg/wasm_md_core_bg.wasm wasm-md-web/public/wasm/
+          cd wasm-md-web
+          npm ci
+
+      - name: Configure Next.js for Static Export
+        run: |
+          # Dynamically append output: 'export' if not already present, or let user configure next.config.ts
+          cd wasm-md-web
+          # Update next.config.ts to support static export
+          sed -i "s/const nextConfig: NextConfig = {/const nextConfig: NextConfig = {\n  output: 'export',\n  images: { unoptimized: true },/g" next.config.ts
+
+      - name: Build Next.js Web App
+        run: |
+          cd wasm-md-web
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'wasm-md-web/out'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
