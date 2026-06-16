@@ -63,6 +63,23 @@ body {
   color: #d4d4d8;
 }
 
+/* GPU-Accelerated Typing Flow Animation */
+@keyframes typing-flow {
+  0% {
+    opacity: 0.88;
+    transform: translateY(0.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.markdown-preview > * {
+  animation: typing-flow 0.08s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
 .markdown-preview h1 {
   font-size: 1.875rem;
   font-weight: 800;
