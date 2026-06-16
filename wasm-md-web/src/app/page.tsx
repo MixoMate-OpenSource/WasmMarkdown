@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useDeferredValue } from 'react';
 import { useWasmLoader } from '@/hooks/useWasmLoader';
 
 const INITIAL_MARKDOWN = `# ⚡ Welcome to WasmMarkdown!
@@ -67,23 +67,23 @@ pub fn render_markdown_to_html(input: &str) -> String {
 export default function Home() {
   const { isLoaded, error, renderMarkdown } = useWasmLoader();
   const [markdown, setMarkdown] = useState(INITIAL_MARKDOWN);
+  const deferredMarkdown = useDeferredValue(markdown);
   const [renderedHtml, setRenderedHtml] = useState('');
   const [viewMode, setViewMode] = useState<'split' | 'editor' | 'preview'>('split');
   const [renderTime, setRenderTime] = useState<number>(0);
   const [copied, setCopied] = useState(false);
-  const [, startTransition] = useTransition();
 
   // Run WASM parsing
   useEffect(() => {
     if (!isLoaded) return;
 
     const start = performance.now();
-    const html = renderMarkdown(markdown);
+    const html = renderMarkdown(deferredMarkdown);
     const end = performance.now();
     
     setRenderedHtml(html);
     setRenderTime(end - start);
-  }, [markdown, isLoaded]);
+  }, [deferredMarkdown, isLoaded]);
 
   // Statistics calculation
   const charCount = markdown.length;
@@ -282,7 +282,7 @@ export default function Home() {
           <div className="flex-1 relative overflow-hidden font-mono text-sm leading-relaxed p-4">
             <textarea
               value={markdown}
-              onChange={(e) => startTransition(() => setMarkdown(e.target.value))}
+              onChange={(e) => setMarkdown(e.target.value)}
               placeholder="# Type your Markdown content here..."
               className="w-full h-full bg-transparent text-zinc-300 resize-none outline-none border-none focus:ring-0 p-0 font-mono scrollbar-thin overflow-y-auto"
               disabled={!isLoaded}
