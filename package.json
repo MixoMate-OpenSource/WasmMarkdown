@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Root workspace for WasmMarkdown project",
   "scripts": {
-    "wasm:build": "cd wasm-md-core && wasm-pack build --target web --release && mkdir -p ../wasm-md-web/src/wasm ../wasm-md-web/public/wasm && cp pkg/wasm_md_core.js ../wasm-md-web/src/wasm/ && cp pkg/wasm_md_core.d.ts ../wasm-md-web/src/wasm/ && cp pkg/wasm_md_core_bg.wasm ../wasm-md-web/public/wasm/",
+    "wasm:build": "cd wasm-md-core && wasm-pack build --target web --release && mkdir -p ../wasm-md-web/src/wasm ../wasm-md-web/public/wasm && cp pkg/wasm_md_core.js ../wasm-md-web/src/wasm/ && cp pkg/wasm_md_core.d.ts ../wasm-md-web/src/wasm/ && cp pkg/wasm_md_core_bg.wasm ../wasm-md-web/public/wasm/ && sed -i \"s|module_or_path = new URL('wasm_md_core_bg.wasm', import.meta.url);|throw new Error('wasm_md_core: WASM path must be specified');|g\" ../wasm-md-web/src/wasm/wasm_md_core.js",
     "web:install": "cd wasm-md-web && npm install",
     "web:dev": "cd wasm-md-web && npm run dev",
     "dev": "npm run wasm:build && npm run web:dev"

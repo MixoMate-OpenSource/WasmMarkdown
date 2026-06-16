@@ -193,7 +193,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (module_or_path === undefined) {
-        throw new Error("wasm_md_core: WASM path must be specified");
+        throw new Error('wasm_md_core: WASM path must be specified');
     }
     const imports = __wbg_get_imports();
 

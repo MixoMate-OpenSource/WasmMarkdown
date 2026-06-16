@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useDeferredValue } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWasmLoader } from '@/hooks/useWasmLoader';
 
 const INITIAL_MARKDOWN = `# ⚡ Welcome to WasmMarkdown!
@@ -66,29 +66,73 @@ pub fn render_markdown_to_html(input: &str) -> String {
 
 export default function Home() {
   const { isLoaded, error, renderMarkdown } = useWasmLoader();
-  const [markdown, setMarkdown] = useState(INITIAL_MARKDOWN);
-  const deferredMarkdown = useDeferredValue(markdown);
+  
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const markdownRef = useRef(INITIAL_MARKDOWN);
   const [renderedHtml, setRenderedHtml] = useState('');
   const [viewMode, setViewMode] = useState<'split' | 'editor' | 'preview'>('split');
   const [renderTime, setRenderTime] = useState<number>(0);
   const [copied, setCopied] = useState(false);
+  const [stats, setStats] = useState({ chars: 0, words: 0, lines: 0 });
 
-  // Run WASM parsing
+  const scheduleUpdateRef = useRef<(val: string) => void>(() => {});
+
+  // Setup requestAnimationFrame update loop to decouple editor and preview rendering
   useEffect(() => {
-    if (!isLoaded) return;
+    let frameId: number;
+    let pendingValue: string | null = null;
 
-    const start = performance.now();
-    const html = renderMarkdown(deferredMarkdown);
-    const end = performance.now();
-    
-    setRenderedHtml(html);
-    setRenderTime(end - start);
-  }, [deferredMarkdown, isLoaded]);
+    const updatePreview = () => {
+      if (pendingValue === null || !isLoaded) return;
 
-  // Statistics calculation
-  const charCount = markdown.length;
-  const wordCount = markdown.trim() === '' ? 0 : markdown.trim().split(/\s+/).length;
-  const lineCount = markdown.split('\n').length;
+      const text = pendingValue;
+      const start = performance.now();
+      const html = renderMarkdown(text);
+      const end = performance.now();
+
+      // Calculate stats
+      const charCount = text.length;
+      const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+      const lineCount = text.split('\n').length;
+
+      setRenderedHtml(html);
+      setRenderTime(end - start);
+      setStats({ chars: charCount, words: wordCount, lines: lineCount });
+
+      pendingValue = null;
+    };
+
+    const scheduleUpdate = (val: string) => {
+      pendingValue = val;
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(updatePreview);
+    };
+
+    scheduleUpdateRef.current = scheduleUpdate;
+
+    // Trigger initial load preview once WASM is loaded
+    if (isLoaded) {
+      scheduleUpdate(markdownRef.current);
+    }
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [isLoaded]);
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    markdownRef.current = val;
+    scheduleUpdateRef.current(val);
+  };
+
+  const handleClear = () => {
+    markdownRef.current = '';
+    if (textareaRef.current) {
+      textareaRef.current.value = '';
+    }
+    scheduleUpdateRef.current('');
+  };
 
   const handleCopyHtml = async () => {
     try {
@@ -101,7 +145,7 @@ export default function Home() {
   };
 
   const handleDownloadMarkdown = () => {
-    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const blob = new Blob([markdownRef.current], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -270,7 +314,7 @@ export default function Home() {
               raw_markdown.md
             </span>
             <button
-              onClick={() => setMarkdown('')}
+              onClick={handleClear}
               className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors uppercase font-semibold"
               title="Clear all text"
             >
@@ -281,8 +325,9 @@ export default function Home() {
           {/* Text Editor Container */}
           <div className="flex-1 relative overflow-hidden font-mono text-sm leading-relaxed p-4">
             <textarea
-              value={markdown}
-              onChange={(e) => setMarkdown(e.target.value)}
+              ref={textareaRef}
+              defaultValue={INITIAL_MARKDOWN}
+              onChange={handleInput}
               placeholder="# Type your Markdown content here..."
               className="w-full h-full bg-transparent text-zinc-300 resize-none outline-none border-none focus:ring-0 p-0 font-mono scrollbar-thin overflow-y-auto"
               disabled={!isLoaded}
@@ -321,7 +366,7 @@ export default function Home() {
               </button>
               <button
                 onClick={handleDownloadMarkdown}
-                disabled={markdown === ''}
+                disabled={stats.chars === 0}
                 className="px-2.5 py-1 text-[10px] font-bold uppercase rounded border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-zinc-300 transition-all active:scale-95"
               >
                 Get MD
@@ -346,7 +391,7 @@ export default function Home() {
                 </svg>
                 <p className="text-xs font-semibold uppercase tracking-wider">Compiling engine...</p>
               </div>
-            ) : markdown === '' ? (
+            ) : stats.chars === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-zinc-600 select-none">
                 <svg className="w-10 h-10 mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -366,9 +411,9 @@ export default function Home() {
       {/* Footer Info / Stats */}
       <footer className="flex items-center justify-between px-6 py-2 border-t border-zinc-900 bg-zinc-950 text-[10px] text-zinc-500 shrink-0 font-mono select-none">
         <div className="flex items-center gap-4">
-          <span>LINES: <strong className="text-zinc-400">{lineCount}</strong></span>
-          <span>WORDS: <strong className="text-zinc-400">{wordCount}</strong></span>
-          <span>CHARS: <strong className="text-zinc-400">{charCount}</strong></span>
+          <span>LINES: <strong className="text-zinc-400">{stats.lines}</strong></span>
+          <span>WORDS: <strong className="text-zinc-400">{stats.words}</strong></span>
+          <span>CHARS: <strong className="text-zinc-400">{stats.chars}</strong></span>
         </div>
         <div>
           <span>100% Client-Side Engine • Offline Sandbox Protected</span>
