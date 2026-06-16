@@ -62,6 +62,8 @@ jobs:
           cp wasm-md-core/pkg/wasm_md_core.js wasm-md-web/src/wasm/
           cp wasm-md-core/pkg/wasm_md_core.d.ts wasm-md-web/src/wasm/
           cp wasm-md-core/pkg/wasm_md_core_bg.wasm wasm-md-web/public/wasm/
+          # Patch the generated JS file to avoid Turbopack static resolution error
+          sed -i "s|module_or_path = new URL('wasm_md_core_bg.wasm', import.meta.url);|throw new Error('wasm_md_core: WASM path must be specified');|g" wasm-md-web/src/wasm/wasm_md_core.js
           cd wasm-md-web
           npm ci
 
