@@ -84,12 +84,28 @@ Open [http://localhost:3000](http://localhost:3000) to view your local high-perf
 
 ## 🌐 Production Deployment
 
-### GitHub Pages (Automated)
-This repository includes a GitHub Actions configuration that automates compiles and deployments.
-1. Push your code to your remote GitHub repository (`main` branch).
-2. Go to your repository settings -> **Pages**.
-3. Under **Build and deployment** -> **Source**, select **GitHub Actions**.
-4. The workflow will automatically compile the Wasm binary, build Next.js, and host it live.
+We use **GitHub Actions** to automate compilation and deployment for both the web interface and native desktop platforms. This repository is configured with **4 separate workflows**:
+
+1. **Web Deployment** ([deploy.yml](file:///.github/workflows/deploy.yml)): Compiles the WASM core, builds the Next.js static asset tree, and deploys it live to GitHub Pages.
+   * *Triggers*: Automatically on pushes to `main` branch or when version tags (`v*`) are pushed/updated.
+2. **Windows Desktop App** ([tauri-windows.yml](file:///.github/workflows/tauri-windows.yml)): Compiles native Windows binary and bundles `.msi` / `.exe` installer.
+   * *Triggers*: Automatically when version tags (`v*`) are pushed/updated.
+3. **macOS Desktop App** ([tauri-macos.yml](file:///.github/workflows/tauri-macos.yml)): Compiles Apple Silicon + Intel universal `.dmg` / `.app` bundles.
+   * *Triggers*: Automatically when version tags (`v*`) are pushed/updated.
+4. **Linux Desktop App** ([tauri-linux.yml](file:///.github/workflows/tauri-linux.yml)): Compiles and bundles `.deb`, `.rpm`, and `.AppImage` packages.
+   * *Triggers*: Automatically when version tags (`v*`) are pushed/updated.
+
+### Triggering Release Builds (All Platforms)
+
+To trigger the builds and package the application for all 4 platforms simultaneously:
+
+1. Commit and push your changes to `main`.
+2. Tag the commit and push it to trigger the automated build matrix:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+This will automatically build the web version and package the installers for Windows, macOS, and Linux, attaching them to a new Draft Release under your GitHub repository.
 
 ### Static Export Hosting (Vercel, Netlify, etc.)
 This application utilizes a Next.js static export (`output: 'export'`). To deploy on other services, configure the framework build settings to run the following build script to compile the Wasm binaries:
