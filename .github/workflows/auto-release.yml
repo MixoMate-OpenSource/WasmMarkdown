@@ -49,15 +49,33 @@ jobs:
           echo "Next tag: $NEXT_TAG"
           echo "tag=$NEXT_TAG" >> $GITHUB_OUTPUT
 
-      - name: Create and Push Tag
+      - name: Create and Push Tag via GitHub API
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Set remote URL with PAT so the push authenticates as a real user
-          # and properly triggers downstream tag-based workflows
-          git remote set-url origin https://x-access-token:${RELEASE_TOKEN}@github.com/${{ github.repository }}.git
-          git tag ${{ steps.version.outputs.tag }} -m "Release ${{ steps.version.outputs.tag }}"
-          git push origin ${{ steps.version.outputs.tag }}
-          echo "✅ Pushed tag ${{ steps.version.outputs.tag }} — build workflows will now trigger automatically."
+          TAG="${{ steps.version.outputs.tag }}"
+          SHA="${{ github.sha }}"
+
+          echo "Creating tag $TAG at commit $SHA via GitHub API..."
+
+          # Use the GitHub REST API to create the tag ref directly.
+          # This bypasses git's credential helper (which actions/checkout@v4 installs
+          # and uses to silently replace our PAT with GITHUB_TOKEN on git push).
+          # A direct API call with the PAT is treated as a real user action and
+          # correctly triggers all downstream tag-based workflows.
+          HTTP_STATUS=$(curl -s -o /tmp/api_response.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: token ${RELEASE_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/git/refs \
+            -d "{\"ref\": \"refs/tags/${TAG}\", \"sha\": \"${SHA}\"}")
+
+          cat /tmp/api_response.json
+
+          if [ "$HTTP_STATUS" -eq 201 ]; then
+            echo "✅ Tag $TAG created successfully — build workflows will now trigger automatically."
+          else
+            echo "❌ Failed to create tag. HTTP status: $HTTP_STATUS"
+            exit 1
+          fi
