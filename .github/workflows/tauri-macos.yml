@@ -1,10 +1,10 @@
 name: Build macOS Desktop App
 
 on:
-  push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+  # push:
+  #   tags:
+  #     - 'v*'
+  workflow_dispatch: # Allows manual run only if needed
 
 permissions:
   contents: write
@@ -30,7 +30,7 @@ jobs:
 
       - name: Install wasm-pack
         run: |
-          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          npm install -g wasm-pack
 
       - name: Build WebAssembly Core
         run: |

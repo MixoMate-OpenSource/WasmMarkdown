@@ -26,13 +26,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: wasm-md-web/package-lock.json
 
-      - name: Install wasm-pack (Windows Binary)
+      - name: Install wasm-pack
         run: |
-          Invoke-WebRequest -Uri "https://github.com/rustwasm/wasm-pack/releases/download/v0.12.1/wasm-pack-v0.12.1-x86_64-pc-windows-msvc.zip" -OutFile "wasm-pack.zip"
-          Expand-Archive -Path "wasm-pack.zip" -DestinationPath "wasm-pack-dist"
-          $wasmPackDir = Resolve-Path "wasm-pack-dist/wasm-pack-v0.12.1-x86_64-pc-windows-msvc"
-          echo "$wasmPackDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        shell: pwsh
+          npm install -g wasm-pack
 
       - name: Build WebAssembly Core
         run: |
