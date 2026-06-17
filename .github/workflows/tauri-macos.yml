@@ -1,0 +1,61 @@
+name: Build macOS Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: wasm-md-web/package-lock.json
+
+      - name: Install wasm-pack
+        run: |
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build WebAssembly Core
+        run: |
+          cd wasm-md-core
+          wasm-pack build --target web --release
+
+      - name: Integrate WASM & Install Node dependencies
+        run: |
+          mkdir -p wasm-md-web/src/wasm wasm-md-web/public/wasm
+          cp wasm-md-core/pkg/wasm_md_core.js wasm-md-web/src/wasm/
+          cp wasm-md-core/pkg/wasm_md_core.d.ts wasm-md-web/src/wasm/
+          cp wasm-md-core/pkg/wasm_md_core_bg.wasm wasm-md-web/public/wasm/
+          sed -i "" "s|module_or_path = new URL('wasm_md_core_bg.wasm', import.meta.url);|throw new Error('wasm_md_core: WASM path must be specified');|g" wasm-md-web/src/wasm/wasm_md_core.js
+          cd wasm-md-web
+          npm ci
+
+      - name: Publish macOS App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: 'wasm-md-web'
+          tagName: v__VERSION__
+          releaseName: 'WasmMarkdown v__VERSION__'
+          releaseBody: 'WasmMarkdown macOS Native Desktop App'
+          releaseDraft: true
+          prerelease: false
+          args: '--target universal-apple-darwin'

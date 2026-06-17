@@ -1,0 +1,64 @@
+name: Build Windows Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: wasm-md-web/package-lock.json
+
+      - name: Install wasm-pack (Windows Binary)
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/rustwasm/wasm-pack/releases/download/v0.12.1/wasm-pack-v0.12.1-x86_64-pc-windows-msvc.zip" -OutFile "wasm-pack.zip"
+          Expand-Archive -Path "wasm-pack.zip" -DestinationPath "wasm-pack-dist"
+          $wasmPackDir = Resolve-Path "wasm-pack-dist/wasm-pack-v0.12.1-x86_64-pc-windows-msvc"
+          echo "$wasmPackDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
+
+      - name: Build WebAssembly Core
+        run: |
+          cd wasm-md-core
+          wasm-pack build --target web --release
+        shell: pwsh
+
+      - name: Integrate WASM & Install Node dependencies
+        run: |
+          mkdir -p wasm-md-web/src/wasm wasm-md-web/public/wasm
+          cp wasm-md-core/pkg/wasm_md_core.js wasm-md-web/src/wasm/
+          cp wasm-md-core/pkg/wasm_md_core.d.ts wasm-md-web/src/wasm/
+          cp wasm-md-core/pkg/wasm_md_core_bg.wasm wasm-md-web/public/wasm/
+          (Get-Content wasm-md-web/src/wasm/wasm_md_core.js) -replace "module_or_path = new URL\('wasm_md_core_bg.wasm', import.meta.url\);", "throw new Error('wasm_md_core: WASM path must be specified');" | Set-Content wasm-md-web/src/wasm/wasm_md_core.js
+          cd wasm-md-web
+          npm ci
+        shell: pwsh
+
+      - name: Publish Windows App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: 'wasm-md-web'
+          tagName: v__VERSION__
+          releaseName: 'WasmMarkdown v__VERSION__'
+          releaseBody: 'WasmMarkdown Windows Native Desktop App'
+          releaseDraft: true
+          prerelease: false

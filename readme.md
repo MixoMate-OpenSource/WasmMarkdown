@@ -99,6 +99,57 @@ cd wasm-md-core && curl https://rustwasm.github.io/wasm-pack/installer/init.sh -
 
 ---
 
+## 🖥️ Desktop Application (Tauri)
+
+WasmMarkdown can also run as a native desktop application. For maximum performance on the desktop, the app bypasses WebAssembly and invokes the Markdown core natively in Rust using Tauri's high-performance IPC bridge.
+
+### System Prerequisites
+
+Because Tauri compiles a native GUI binary, you must install the WebKitGTK and development libraries on your machine before compiling:
+
+#### Debian / Ubuntu
+```bash
+sudo apt-get update && sudo apt-get install -y \
+  libsoup-3.0-dev \
+  libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libssl-dev \
+  libgtk-3-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
+```
+
+#### Fedora
+```bash
+sudo dnf groupinstall -y "C Development Tools and Libraries"
+sudo dnf install -y \
+  libsoup3-devel \
+  webkit2gtk4.1-devel \
+  libappindicator-gtk3-devel \
+  openssl-devel \
+  librsvg2-devel
+```
+
+### Running the Desktop App
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd wasm-md-web
+   ```
+2. Start the application in development mode:
+   ```bash
+   npm run tauri dev
+   ```
+3. To package the application as a production-ready installer:
+   ```bash
+   npm run tauri build
+   ```
+
+---
+
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for details.

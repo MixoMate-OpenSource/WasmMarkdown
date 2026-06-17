@@ -82,12 +82,12 @@ export default function Home() {
     let frameId: number;
     let pendingValue: string | null = null;
 
-    const updatePreview = () => {
+    const updatePreview = async () => {
       if (pendingValue === null || !isLoaded) return;
 
       const text = pendingValue;
       const start = performance.now();
-      const html = renderMarkdown(text);
+      const html = await renderMarkdown(text);
       const end = performance.now();
 
       // Calculate stats

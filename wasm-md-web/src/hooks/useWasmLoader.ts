@@ -6,9 +6,23 @@ import init, { render_markdown_to_html } from '@/wasm/wasm_md_core';
 export function useWasmLoader() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isTauri, setIsTauri] = useState(false);
 
   useEffect(() => {
     let active = true;
+
+    // Check if running inside Tauri webview
+    const runningInTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    if (active) {
+      setIsTauri(runningInTauri);
+    }
+
+    if (runningInTauri) {
+      if (active) {
+        setIsLoaded(true);
+      }
+      return;
+    }
 
     async function loadWasm() {
       try {
@@ -33,9 +47,18 @@ export function useWasmLoader() {
     };
   }, []);
 
-  const renderMarkdown = (markdown: string): string => {
+  const renderMarkdown = async (markdown: string): Promise<string> => {
     if (!isLoaded) {
       return '';
+    }
+    if (isTauri) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<string>('parse_markdown', { input: markdown });
+      } catch (err) {
+        console.error('Error invoking native parse_markdown:', err);
+        return `<div style="color: #ef4444; padding: 1rem; border: 1px solid #ef4444; border-radius: 0.375rem; background-color: rgba(239, 68, 68, 0.1);">Error rendering Markdown: ${String(err)}</div>`;
+      }
     }
     try {
       return render_markdown_to_html(markdown);
