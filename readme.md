@@ -24,11 +24,14 @@ The workspace splits rendering presentation and high-speed compilation:
 graph LR
     A[User Inputs Markdown] -->|State Sync| B[Next.js Client Page]
     B -->|Text String| C[React useWasmLoader Hook]
-    C -->|Progressive Load| D[Rust WASM Engine]
+    C -->|Tauri IPC invoke| F[Native Rust Parser]
+    C -->|WASM init in browser| D[Rust WASM Engine]
     D -->|Streaming Parse cmark| D
     D -->|HTML Output Buffer| C
+    F -->|HTML Output Buffer| C
     C -->|dangerouslySetInnerHTML| E[Live Preview Panel]
     style D fill:#a855f7,stroke:#a855f7,color:#fff
+    style F fill:#f97316,stroke:#f97316,color:#fff
     style E fill:#10b981,stroke:#10b981,color:#fff
 ```
 
@@ -36,14 +39,22 @@ graph LR
 
 ## 🛠️ Repository Layout
 
-*   [wasm-md-core/](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-core): The native Rust library compiling to WebAssembly.
-    *   [wasm-md-core/src/lib.rs](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-core/src/lib.rs): Rust entry point wrapping `pulldown-cmark`.
-    *   [wasm-md-core/Cargo.toml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-core/Cargo.toml): Cargo configuration defining WASM target dependencies.
-*   [wasm-md-web/](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web): Next.js 15 Client workspace.
-    *   [wasm-md-web/src/hooks/useWasmLoader.ts](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src/hooks/useWasmLoader.ts): Custom loader hook initializing the WASM engine in the browser.
-    *   [wasm-md-web/src/app/page.tsx](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src/app/page.tsx): Premium split-screen dark-mode editor dashboard.
-    *   [wasm-md-web/src/app/globals.css](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src/app/globals.css): Core Tailwind and custom styling rules for Markdown components.
-*   [.github/workflows/deploy.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/deploy.yml): Automated CI/CD pipeline for GitHub Pages deployment.
+*   [wasm-md-core/](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-core): The native Rust library — compiles to both WebAssembly (for web) and native `rlib` (for Tauri desktop).
+    *   [src/lib.rs](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-core/src/lib.rs): Rust entry point wrapping `pulldown-cmark`.
+    *   [Cargo.toml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-core/Cargo.toml): Cargo configuration with `crate-type = ["cdylib", "rlib"]`.
+*   [wasm-md-web/](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web): Next.js frontend workspace.
+    *   [src/hooks/useWasmLoader.ts](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src/hooks/useWasmLoader.ts): Environment-aware loader — uses Tauri native IPC in desktop, falls back to WASM in browser.
+    *   [src/app/page.tsx](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src/app/page.tsx): Split-screen dark-mode editor dashboard.
+    *   [src/app/globals.css](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src/app/globals.css): Tailwind and custom Markdown preview styles.
+    *   [src-tauri/](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src-tauri): Tauri 2 desktop shell — exposes `parse_markdown` native IPC command.
+        *   [src-tauri/src/lib.rs](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src-tauri/src/lib.rs): Tauri command handler calling `wasm_md_core::render_markdown_to_html`.
+        *   [src-tauri/tauri.conf.json](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src-tauri/tauri.conf.json): Tauri app config (bundle ID: `com.wasmmarkdown.app`).
+*   [.github/workflows/](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows): CI/CD pipelines — all triggered by version tags (`v*`).
+    *   [auto-release.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/auto-release.yml): **Orchestrator** — auto-increments version tag on push to `release` branch, triggering all builds.
+    *   [deploy.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/deploy.yml): GitHub Pages web deployment.
+    *   [tauri-windows.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/tauri-windows.yml): Windows `.msi` / `.exe` release builder.
+    *   [tauri-linux.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/tauri-linux.yml): Linux `.deb` / `.rpm` / `.AppImage` release builder.
+    *   [tauri-macos.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/tauri-macos.yml): macOS `.dmg` / `.app` builder (manual trigger only — disabled for auto releases).
 
 ---
 
@@ -91,21 +102,29 @@ We use **GitHub Actions** to automate compilation and deployment for both the we
 2. **Windows Desktop App** ([tauri-windows.yml](file:///.github/workflows/tauri-windows.yml)): Compiles native Windows binary and bundles `.msi` / `.exe` installer.
    * *Triggers*: Automatically when version tags (`v*`) are pushed/updated.
 3. **macOS Desktop App** ([tauri-macos.yml](file:///.github/workflows/tauri-macos.yml)): Compiles Apple Silicon + Intel universal `.dmg` / `.app` bundles.
-   * *Triggers*: Automatically when version tags (`v*`) are pushed/updated.
+   * *Triggers*: **Manual only** — disabled for automatic tag releases. Run from the GitHub Actions tab when needed.
 4. **Linux Desktop App** ([tauri-linux.yml](file:///.github/workflows/tauri-linux.yml)): Compiles and bundles `.deb`, `.rpm`, and `.AppImage` packages.
    * *Triggers*: Automatically when version tags (`v*`) are pushed/updated.
 
 ### Triggering Release Builds (All Platforms)
 
-To trigger the builds and package the application for all 4 platforms simultaneously:
+All builds are orchestrated automatically by pushing to the **`release` branch**. A dedicated [auto-release.yml](file:///.github/workflows/auto-release.yml) workflow handles the entire flow:
 
-1. Commit and push your changes to `main`.
-2. Tag the commit and push it to trigger the automated build matrix:
+1. Merge your changes into the `release` branch and push:
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   git checkout release
+   git merge main
+   git push origin release
    ```
-This will automatically build the web version and package the installers for Windows, macOS, and Linux, attaching them to a new Draft Release under your GitHub repository.
+2. The `auto-release.yml` workflow runs automatically. It reads the latest tag (e.g. `v1.0.1`), computes the next version (`v1.0.2`), and pushes the new tag.
+3. The new tag immediately triggers the 3 build workflows in parallel:
+   * 🌐 **Web Deploy** → updates GitHub Pages
+   * 🪟 **Windows Build** → creates `.msi` / `.exe` installer
+   * 🐧 **Linux Build** → creates `.deb` / `.rpm` / `.AppImage`
+4. All installers are uploaded to a new **Draft Release** on GitHub. Review and publish when ready.
+
+> [!NOTE]
+> The **macOS build** ([tauri-macos.yml](file:///.github/workflows/tauri-macos.yml)) is disabled for automatic releases. Run it manually from the **Actions** tab on GitHub if needed.
 
 ### Static Export Hosting (Vercel, Netlify, etc.)
 This application utilizes a Next.js static export (`output: 'export'`). To deploy on other services, configure the framework build settings to run the following build script to compile the Wasm binaries:
@@ -117,7 +136,7 @@ cd wasm-md-core && curl https://rustwasm.github.io/wasm-pack/installer/init.sh -
 
 ## 🖥️ Desktop Application (Tauri)
 
-WasmMarkdown can also run as a native desktop application. For maximum performance on the desktop, the app bypasses WebAssembly and invokes the Markdown core natively in Rust using Tauri's high-performance IPC bridge.
+WasmMarkdown can also run as a native cross-platform desktop application via [Tauri 2](https://tauri.app). The `useWasmLoader` hook automatically detects whether it is running inside the Tauri desktop shell (via `window.__TAURI_INTERNALS__`) and switches to a native IPC call (`invoke('parse_markdown')`), bypassing WebAssembly entirely for maximum throughput. In a standard web browser the WASM engine is loaded as usual — no code changes are needed.
 
 ### System Prerequisites
 
