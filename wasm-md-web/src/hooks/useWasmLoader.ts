@@ -13,7 +13,8 @@ export function useWasmLoader() {
     async function loadWasm() {
       try {
         // Initialize WASM module using static asset route
-        await init('/wasm/wasm_md_core_bg.wasm');
+        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+        await init(`${basePath}/wasm/wasm_md_core_bg.wasm`);
         if (active) {
           setIsLoaded(true);
         }

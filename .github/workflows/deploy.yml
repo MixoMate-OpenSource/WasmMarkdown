@@ -67,14 +67,9 @@ jobs:
           cd wasm-md-web
           npm ci
 
-      - name: Configure Next.js for Static Export
-        run: |
-          # Dynamically append output: 'export' if not already present, or let user configure next.config.ts
-          cd wasm-md-web
-          # Update next.config.ts to support static export
-          sed -i "s/const nextConfig: NextConfig = {/const nextConfig: NextConfig = {\n  output: 'export',\n  images: { unoptimized: true },/g" next.config.ts
-
       - name: Build Next.js Web App
+        env:
+          NEXT_PUBLIC_BASE_PATH: /WasmMarkdown
         run: |
           cd wasm-md-web
           npm run build
