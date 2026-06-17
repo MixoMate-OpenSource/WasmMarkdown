@@ -50,7 +50,6 @@ graph LR
         *   [src-tauri/src/lib.rs](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src-tauri/src/lib.rs): Tauri command handler calling `wasm_md_core::render_markdown_to_html`.
         *   [src-tauri/tauri.conf.json](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/wasm-md-web/src-tauri/tauri.conf.json): Tauri app config (bundle ID: `com.wasmmarkdown.app`).
 *   [.github/workflows/](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows): CI/CD pipelines — all triggered by version tags (`v*`).
-    *   [auto-release.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/auto-release.yml): **Orchestrator** — auto-increments version tag on push to `release` branch, triggering all builds.
     *   [deploy.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/deploy.yml): GitHub Pages web deployment.
     *   [tauri-windows.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/tauri-windows.yml): Windows `.msi` / `.exe` release builder.
     *   [tauri-linux.yml](file:///home/mixomate/work/Mixomate/opensource/WasmMarkdown/.github/workflows/tauri-linux.yml): Linux `.deb` / `.rpm` / `.AppImage` release builder.
@@ -108,23 +107,15 @@ We use **GitHub Actions** to automate compilation and deployment for both the we
 
 ### Triggering Release Builds (All Platforms)
 
-All builds are orchestrated automatically by pushing to the **`release` branch**. A dedicated [auto-release.yml](file:///.github/workflows/auto-release.yml) workflow handles the entire flow:
+To trigger the builds and package the application for all 4 platforms simultaneously:
 
-1. Merge your changes into the `release` branch and push:
+1. Commit and push your changes to `main`.
+2. Tag the commit and push it to trigger the automated build matrix:
    ```bash
-   git checkout release
-   git merge main
-   git push origin release
+   git tag v1.0.1
+   git push origin v1.0.1
    ```
-2. The `auto-release.yml` workflow runs automatically. It reads the latest tag (e.g. `v1.0.1`), computes the next version (`v1.0.2`), and pushes the new tag.
-3. The new tag immediately triggers the 3 build workflows in parallel:
-   * 🌐 **Web Deploy** → updates GitHub Pages
-   * 🪟 **Windows Build** → creates `.msi` / `.exe` installer
-   * 🐧 **Linux Build** → creates `.deb` / `.rpm` / `.AppImage`
-4. All installers are uploaded to a new **Draft Release** on GitHub. Review and publish when ready.
-
-> [!NOTE]
-> The **macOS build** ([tauri-macos.yml](file:///.github/workflows/tauri-macos.yml)) is disabled for automatic releases. Run it manually from the **Actions** tab on GitHub if needed.
+This will automatically run the **Web Deploy**, **Windows**, and **Linux** workflows in parallel, attaching all installer assets to a new Draft Release on your GitHub repository. The macOS build must be run manually if needed.
 
 ### Static Export Hosting (Vercel, Netlify, etc.)
 This application utilizes a Next.js static export (`output: 'export'`). To deploy on other services, configure the framework build settings to run the following build script to compile the Wasm binaries:
