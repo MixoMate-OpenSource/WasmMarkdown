@@ -87,7 +87,7 @@ Open [http://localhost:3000](http://localhost:3000) to view your local high-perf
 We use **GitHub Actions** to automate compilation and deployment for both the web interface and native desktop platforms. This repository is configured with **4 separate workflows**:
 
 1. **Web Deployment** ([deploy.yml](file:///.github/workflows/deploy.yml)): Compiles the WASM core, builds the Next.js static asset tree, and deploys it live to GitHub Pages.
-   * *Triggers*: Automatically on pushes to `main` branch or when version tags (`v*`) are pushed/updated.
+   * *Triggers*: Automatically when version tags (`v*`) are pushed/updated (disabled on direct branch pushes).
 2. **Windows Desktop App** ([tauri-windows.yml](file:///.github/workflows/tauri-windows.yml)): Compiles native Windows binary and bundles `.msi` / `.exe` installer.
    * *Triggers*: Automatically when version tags (`v*`) are pushed/updated.
 3. **macOS Desktop App** ([tauri-macos.yml](file:///.github/workflows/tauri-macos.yml)): Compiles Apple Silicon + Intel universal `.dmg` / `.app` bundles.
