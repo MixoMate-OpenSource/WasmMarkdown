@@ -56,6 +56,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'WasmMarkdown v__VERSION__'
           releaseBody: 'WasmMarkdown macOS Native Desktop App'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: '--target universal-apple-darwin'

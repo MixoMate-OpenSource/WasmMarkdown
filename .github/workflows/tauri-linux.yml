@@ -70,6 +70,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'WasmMarkdown v__VERSION__'
           releaseBody: 'WasmMarkdown Linux Native Desktop App'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: '--bundles deb,rpm,appimage'
