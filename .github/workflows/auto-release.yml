@@ -19,11 +19,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required to access full git history and all tags
-          # Use a PAT instead of GITHUB_TOKEN so that the tag push
-          # triggers downstream workflows (deploy, windows, linux).
-          # GITHUB_TOKEN pushes are intentionally blocked from triggering
-          # other workflows by GitHub to prevent infinite loops.
-          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Compute Next Version Tag
         id: version
