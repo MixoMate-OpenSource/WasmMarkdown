@@ -38,10 +38,10 @@ jobs:
 
       - name: Integrate WASM & Install Node dependencies
         run: |
-          mkdir -p wasm-md-web/src/wasm wasm-md-web/public/wasm
-          cp wasm-md-core/pkg/wasm_md_core.js wasm-md-web/src/wasm/
-          cp wasm-md-core/pkg/wasm_md_core.d.ts wasm-md-web/src/wasm/
-          cp wasm-md-core/pkg/wasm_md_core_bg.wasm wasm-md-web/public/wasm/
+          New-Item -ItemType Directory -Force -Path wasm-md-web/src/wasm, wasm-md-web/public/wasm
+          Copy-Item -Path wasm-md-core/pkg/wasm_md_core.js -Destination wasm-md-web/src/wasm/ -Force
+          Copy-Item -Path wasm-md-core/pkg/wasm_md_core.d.ts -Destination wasm-md-web/src/wasm/ -Force
+          Copy-Item -Path wasm-md-core/pkg/wasm_md_core_bg.wasm -Destination wasm-md-web/public/wasm/ -Force
           (Get-Content wasm-md-web/src/wasm/wasm_md_core.js) -replace "module_or_path = new URL\('wasm_md_core_bg.wasm', import.meta.url\);", "throw new Error('wasm_md_core: WASM path must be specified');" | Set-Content wasm-md-web/src/wasm/wasm_md_core.js
           cd wasm-md-web
           npm ci
